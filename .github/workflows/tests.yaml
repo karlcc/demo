@@ -51,7 +51,10 @@ jobs:
               if: matrix.operating-system == 'macos-latest'
               run: |
                 cp .env.test.macos .env.test.local
-                echo "memory_limit=512M" >> .env.test.local
+                mkdir -p var/test
+                # Create a simpler PHPUnit config for macOS without DAMA extension
+                cp phpunit.dist.xml phpunit.macos.xml
+                sed -i '' '/DAMA.*PHPUnitExtension/d' phpunit.macos.xml
 
             - name: "Build and compile assets"
               run: |
@@ -60,4 +63,9 @@ jobs:
                 php bin/console asset-map:compile
 
             - name: "Run tests"
-              run: vendor/bin/phpunit
+              run: |
+                if [ "${{ matrix.operating-system }}" = "macos-latest" ]; then
+                  vendor/bin/phpunit --configuration phpunit.macos.xml
+                else
+                  vendor/bin/phpunit
+                fi
