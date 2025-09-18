@@ -1,0 +1,93 @@
+FROM php:8.4-fpm-alpine
+
+# Install system dependencies with specific SQLite configuration for macOS Docker
+RUN apk add --no-cache \
+    git \
+    curl \
+    unzip \
+    icu-dev \
+    libzip-dev \
+    libpng-dev \
+    jpeg-dev \
+    freetype-dev \
+    sqlite-dev \
+    oniguruma-dev \
+    nodejs \
+    npm \
+    supervisor \
+    bash
+
+# Configure SQLite for better stability on macOS Docker environments
+ENV SQLITE_TEMP_STORE=memory \
+    SQLITE_JOURNAL_MODE=wal \
+    SQLITE_SYNCHRONOUS=off
+
+# Install PHP extensions with specific SQLite configuration
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-configure pdo_sqlite --with-sqlite3 \
+    && docker-php-ext-install -j$(nproc) \
+        pdo \
+        pdo_sqlite \
+        zip \
+        intl \
+        gd \
+        opcache \
+    && docker-php-ext-enable opcache
+
+# Set higher memory limit and PHP configuration for testing
+RUN { \
+        echo "memory_limit = 768M"; \
+        echo "realpath_cache_size = 4096K"; \
+        echo "realpath_cache_ttl = 120"; \
+    } > /usr/local/etc/php/conf.d/memory-limit.ini
+
+# Configure opcache for testing
+RUN { \
+        echo 'opcache.memory_consumption=256'; \
+        echo 'opcache.interned_strings_buffer=16'; \
+        echo 'opcache.max_accelerated_files=10000'; \
+        echo 'opcache.revalidate_freq=0'; \
+        echo 'opcache.validate_timestamps=1'; \
+        echo 'opcache.save_comments=1'; \
+        echo 'opcache.enable_file_override=0'; \
+        echo 'opcache.load_comments=1'; \
+        echo 'opcache.fast_shutdown=1'; \
+        echo 'opcache.enable_cli=1'; \
+        echo 'opcache.file_cache="/tmp/opcache"'; \
+    } > /usr/local/etc/php/conf.d/opcache-recommended.ini
+
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy composer files and install dependencies
+COPY composer.json composer.lock ./
+RUN composer install --no-interaction --no-scripts --optimize-autoloader
+
+# Copy application files
+COPY . .
+
+# Copy entrypoint script
+COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+# Copy importmap configuration
+COPY importmap.php ./
+
+# Set proper permissions and create test-specific directories
+RUN chown -R www-data:www-data /var/www/html/var /var/www/html/data \
+    && mkdir -p /tmp/opcache /tmp/sessions \
+    && chmod 777 /tmp/opcache /tmp/sessions
+
+# Environment variables for testing stability
+ENV APP_ENV=test \
+    APP_SECRET=test-secret-key \
+    SYMFONY_DEPRECATIONS_HELPER=disabled \
+    SYMFONY_ISOLATE_MACOS_TESTS=1
+
+# Expose port
+EXPOSE 8100
+
+# Start supervisor via docker-compose

@@ -28,12 +28,22 @@ jobs:
                       php-version: '8.2'
                     - operating-system: 'macos-latest'
                       php-version: '8.3'
+                      use-docker: true
 
         steps:
             - name: "Checkout code"
               uses: actions/checkout@v5
 
+            - name: "Set up Docker for macOS"
+              if: matrix.use-docker == 'true'
+              run: |
+                # Start Docker service on macOS runner
+                sudo systemctl start docker || true
+                docker --version
+                docker-compose --version
+
             - name: "Install PHP with extensions"
+              if: matrix.use-docker != 'true'
               uses: shivammathur/setup-php@v2
               with:
                   coverage: "none"
@@ -42,30 +52,27 @@ jobs:
                   tools: composer:v2
 
             - name: "Add PHPUnit matcher"
+              if: matrix.use-docker != 'true'
               run: echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
 
             - name: "Install dependencies"
+              if: matrix.use-docker != 'true'
               run: composer install --ansi --no-interaction --no-progress
 
-            - name: "Configure macOS-specific settings"
-              if: matrix.operating-system == 'macos-latest'
-              run: |
-                cp .env.test.macos .env.test.local
-                mkdir -p data
-
             - name: "Build and compile assets"
+              if: matrix.use-docker != 'true'
               run: |
                 php bin/console importmap:install
                 php bin/console sass:build
                 php bin/console asset-map:compile
 
-            - name: "Run tests (macOS)"
-              if: matrix.operating-system == 'macos-latest'
+            - name: "Run tests (macOS Docker)"
+              if: matrix.use-docker == 'true'
               run: |
-                export MEMORY_LIMIT=512M
-                export SYMFONY_ISOLATE_MACOS_TESTS=1
-                vendor/bin/phpunit --configuration phpunit.macos.xml --stop-on-defect
+                # Use Docker for macOS testing to avoid segmentation faults
+                docker-compose -f docker-compose.test.yml build --no-cache
+                docker-compose -f docker-compose.test.yml run --rm symfony-test
 
             - name: "Run tests (other platforms)"
-              if: matrix.operating-system != 'macos-latest'
+              if: matrix.use-docker != 'true'
               run: vendor/bin/phpunit
