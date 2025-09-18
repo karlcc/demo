@@ -25,7 +25,7 @@ jobs:
                 php-version: ['8.2', '8.3', '8.4']
                 include:
                     - operating-system: 'macos-latest'
-                      php-version: '8.2'
+                      php-version: '8.3'
                     - operating-system: 'windows-latest'
                       php-version: '8.2'
 
