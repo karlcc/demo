@@ -12,8 +12,6 @@ services:
       - /var/www/html/var/log
       - /var/www/html/vendor
       - /var/www/html/node_modules
-      - /tmp/opcache:/tmp/opcache
-      - /tmp/sessions:/tmp/sessions
     environment:
       - APP_ENV=test
       - APP_SECRET=test-secret-for-ci
@@ -26,22 +24,17 @@ services:
       - SQLITE_JOURNAL_MODE=wal
       - SQLITE_SYNCHRONOUS=off
     working_dir: /var/www/html
-    command: /bin/sh -c "mkdir -p data && chmod 777 data && php vendor/bin/phpunit"
+    command: >
+      sh -c "
+        mkdir -p data &&
+        chmod 777 data &&
+        php bin/console doctrine:database:create --if-not-exists --env=test &&
+        php bin/console doctrine:schema:update --force --env=test &&
+        php vendor/bin/phpunit --configuration phpunit.macos.xml --stop-on-defect
+      "
     networks:
       - test-network
-    # Add health check to ensure container is ready
-    healthcheck:
-      test: ["CMD", "php", "-v"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
 
 networks:
   test-network:
     driver: bridge
-
-volumes:
-  opcache_cache:
-    driver: local
-  session_data:
-    driver: local

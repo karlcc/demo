@@ -36,11 +36,13 @@ jobs:
 
             - name: "Set up Docker for macOS"
               if: matrix.use-docker == 'true'
-              run: |
-                # Start Docker service on macOS runner
-                sudo systemctl start docker || true
-                docker --version
-                docker-compose --version
+              uses: docker/setup-docker@v4
+              with:
+                docker-version: '26.1.0'
+
+            - name: "Set up Docker Compose for macOS"
+              if: matrix.use-docker == 'true'
+              uses: docker/setup-compose@v3
 
             - name: "Install PHP with extensions"
               if: matrix.use-docker != 'true'
@@ -66,12 +68,23 @@ jobs:
                 php bin/console sass:build
                 php bin/console asset-map:compile
 
-            - name: "Run tests (macOS Docker)"
+            - name: "Build test environment for macOS"
               if: matrix.use-docker == 'true'
               run: |
-                # Use Docker for macOS testing to avoid segmentation faults
-                docker-compose -f docker-compose.test.yml build --no-cache
-                docker-compose -f docker-compose.test.yml run --rm symfony-test
+                # Build the test Docker image
+                docker compose -f docker-compose.test.yml build --no-cache
+
+          - name: "Run tests (macOS Docker)"
+              if: matrix.use-docker == 'true'
+              run: |
+                # Run tests in Docker container
+                docker compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from symfony-test
+
+          - name: "Clean up Docker resources"
+              if: matrix.use-docker == 'true' && always()
+              run: |
+                # Clean up Docker containers and volumes
+                docker compose -f docker-compose.test.yml down -v --remove-orphans
 
             - name: "Run tests (other platforms)"
               if: matrix.use-docker != 'true'
