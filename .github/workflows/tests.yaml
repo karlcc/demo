@@ -62,10 +62,10 @@ jobs:
                 php bin/console sass:build
                 php bin/console asset-map:compile
 
-            - name: "Run tests"
-              run: |
-                if [ "${{ matrix.operating-system }}" = "macos-latest" ]; then
-                  SYMFONY_ISOLATE_MACOS_TESTS=1 vendor/bin/phpunit --configuration phpunit.macos.xml
-                else
-                  vendor/bin/phpunit
-                fi
+            - name: "Run tests (macOS)"
+              if: matrix.operating-system == 'macos-latest'
+              run: SYMFONY_ISOLATE_MACOS_TESTS=1 vendor/bin/phpunit --configuration phpunit.macos.xml
+
+            - name: "Run tests (other platforms)"
+              if: matrix.operating-system != 'macos-latest'
+              run: vendor/bin/phpunit
