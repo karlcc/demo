@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- macOS-specific PHPUnit configuration to prevent segmentation faults -->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         cacheDirectory=".phpunit.cache.macos"
+         colors="true"
+         failOnDeprecation="false"
+         failOnNotice="false"
+         failOnWarning="false"
+         bootstrap="tests/bootstrap.php"
+         stopOnDefect="true"
+         processIsolation="false"
+         backupGlobals="false"
+         backupStaticAttributes="false"
+>
+    <php>
+        <ini name="display_errors" value="1" />
+        <ini name="error_reporting" value="-1" />
+        <ini name="memory_limit" value="512M" />
+        <server name="APP_ENV" value="test" force="true" />
+        <server name="SHELL_VERBOSITY" value="-1" />
+        <server name="SYMFONY_ISOLATE_MACOS_TESTS" value="1" force="true" />
+        <env name="MEMORY_LIMIT" value="512M" />
+    </php>
+
+    <testsuites>
+        <testsuite name="Project Test Suite">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+
+    <source ignoreSuppressionOfDeprecations="true"
+            ignoreIndirectDeprecations="true"
+            restrictNotices="false"
+            restrictWarnings="false"
+    >
+        <include>
+            <directory>src</directory>
+        </include>
+
+        <deprecationTrigger>
+            <function>trigger_deprecation</function>
+            <method>Doctrine\Deprecations\Deprecation::trigger</method>
+            <method>Doctrine\Deprecations\Deprecation::delegateTriggerToBackend</method>
+        </deprecationTrigger>
+    </source>
+
+    <!-- No DAMA extension for macOS -->
+    <extensions>
+        <!-- Run `composer require symfony/panther` before enabling this extension -->
+        <!-- <bootstrap class="Symfony\Component\Panther\ServerExtension" /> -->
+    </extensions>
+</phpunit>

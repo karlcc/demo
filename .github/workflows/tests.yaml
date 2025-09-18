@@ -52,9 +52,6 @@ jobs:
               run: |
                 cp .env.test.macos .env.test.local
                 mkdir -p data
-                # Create a simpler PHPUnit config for macOS without DAMA extension
-                cp phpunit.dist.xml phpunit.macos.xml
-                sed -i '' '/DAMA.*PHPUnitExtension/d' phpunit.macos.xml
 
             - name: "Build and compile assets"
               run: |
@@ -64,7 +61,10 @@ jobs:
 
             - name: "Run tests (macOS)"
               if: matrix.operating-system == 'macos-latest'
-              run: SYMFONY_ISOLATE_MACOS_TESTS=1 vendor/bin/phpunit --configuration phpunit.macos.xml
+              run: |
+                export MEMORY_LIMIT=512M
+                export SYMFONY_ISOLATE_MACOS_TESTS=1
+                vendor/bin/phpunit --configuration phpunit.macos.xml --stop-on-defect
 
             - name: "Run tests (other platforms)"
               if: matrix.operating-system != 'macos-latest'
