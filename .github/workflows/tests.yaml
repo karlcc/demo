@@ -8,7 +8,7 @@ on:
     workflow_dispatch:
 
 env:
-    fail-fast: true
+    fail-fast: false
 
 permissions:
     contents: read
@@ -64,8 +64,11 @@ jobs:
 
             - name: "Run tests"
               run: |
-                if [ "${{ matrix.operating-system }}" = "macos-latest" ]; then
-                  vendor/bin/phpunit --configuration phpunit.macos.xml
-                else
-                  vendor/bin/phpunit
-                fi
+                case "${{ matrix.operating-system }}" in
+                  "macos-latest")
+                    vendor/bin/phpunit --configuration phpunit.macos.xml
+                    ;;
+                  *)
+                    vendor/bin/phpunit
+                    ;;
+                esac
