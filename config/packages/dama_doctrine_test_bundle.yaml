@@ -1,4 +1,4 @@
-when@test:
+when@test and not env('SYMFONY_ISOLATE_MACOS_TESTS'):
     dama_doctrine_test:
         enable_static_connection: true
         enable_static_meta_data_cache: true
