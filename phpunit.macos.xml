@@ -12,7 +12,6 @@
          stopOnDefect="true"
          processIsolation="false"
          backupGlobals="false"
-         backupStaticAttributes="false"
 >
     <php>
         <ini name="display_errors" value="1" />
