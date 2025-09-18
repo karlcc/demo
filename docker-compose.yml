@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  symfony-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: symfony-demo-app
+    ports:
+      - "${SERVER_PORT:-8100}:${SERVER_PORT:-8100}"
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/var/cache
+      - /var/www/html/var/log
+      - /var/www/html/node_modules
+    environment:
+      - APP_ENV=dev
+      - APP_SECRET=${APP_SECRET:-your-secret-key-here}
+      - SERVER_PORT=${SERVER_PORT:-8100}
+      - DATABASE_URL=sqlite:///var/www/html/data/database.sqlite
+      - SYMFONY_TRUSTED_PROXIES=127.0.0.1,localhost
+      - SYMFONY_TRUSTED_HEADERS=x-forwarded-for,x-forwarded-host,x-forwarded-proto,x-forwarded-port
+    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisor.conf"]
+    networks:
+      - symfony-network
+    restart: unless-stopped
+
+  # Optional: Add a database service if you want to use MySQL/PostgreSQL instead of SQLite
+  # mysql:
+  #   image: mysql:8.0
+  #   container_name: symfony-demo-mysql
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: root
+  #     MYSQL_DATABASE: symfony_demo
+  #     MYSQL_USER: app
+  #     MYSQL_PASSWORD: app
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+  #   networks:
+  #     - symfony-network
+
+networks:
+  symfony-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
+    driver: local
