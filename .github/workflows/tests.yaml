@@ -51,7 +51,7 @@ jobs:
               if: matrix.operating-system == 'macos-latest'
               run: |
                 cp .env.test.macos .env.test.local
-                mkdir -p var/test
+                mkdir -p data
                 # Create a simpler PHPUnit config for macOS without DAMA extension
                 cp phpunit.dist.xml phpunit.macos.xml
                 sed -i '' '/DAMA.*PHPUnitExtension/d' phpunit.macos.xml
@@ -66,7 +66,7 @@ jobs:
               run: |
                 case "${{ matrix.operating-system }}" in
                   "macos-latest")
-                    vendor/bin/phpunit --configuration phpunit.macos.xml
+                    SYMFONY_ISOLATE_MACOS_TESTS=1 vendor/bin/phpunit --configuration phpunit.macos.xml
                     ;;
                   *)
                     vendor/bin/phpunit
