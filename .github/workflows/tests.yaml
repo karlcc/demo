@@ -64,11 +64,8 @@ jobs:
 
             - name: "Run tests"
               run: |
-                case "${{ matrix.operating-system }}" in
-                  "macos-latest")
-                    SYMFONY_ISOLATE_MACOS_TESTS=1 vendor/bin/phpunit --configuration phpunit.macos.xml
-                    ;;
-                  *)
-                    vendor/bin/phpunit
-                    ;;
-                esac
+                if [ "${{ matrix.operating-system }}" = "macos-latest" ]; then
+                  SYMFONY_ISOLATE_MACOS_TESTS=1 vendor/bin/phpunit --configuration phpunit.macos.xml
+                else
+                  vendor/bin/phpunit
+                fi
