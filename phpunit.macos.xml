@@ -13,9 +13,6 @@
          processIsolation="true"
          backupGlobals="false"
          backupStaticProperties="false"
-         beStrictAboutOutputDuringTests="false"
-         beStrictAboutChangesToGlobalState="false"
-         verbose="false"
 >
     <php>
         <ini name="display_errors" value="0" />

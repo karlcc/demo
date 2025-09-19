@@ -92,8 +92,7 @@ jobs:
                     --configuration phpunit.macos.xml \
                     --stop-on-failure \
                     --no-coverage \
-                    --process-isolation \
-                    --verbose
+                    --process-isolation
 
                 TEST_EXIT_CODE=$?
 
@@ -113,7 +112,6 @@ jobs:
                           --configuration phpunit.macos.xml \
                           --no-coverage \
                           --process-isolation \
-                          --verbose \
                           "$dir" || exit $?
                     fi
                   done
@@ -131,7 +129,6 @@ jobs:
                           --configuration phpunit.macos.xml \
                           --no-coverage \
                           --process-isolation \
-                          --verbose \
                           "$file" || exit $?
                     fi
                   done
