@@ -1,0 +1,14 @@
+services:
+  symfony-app:
+    volumes:
+      # Development override: mount source code for live editing
+      # This overrides the production volumes but excludes vendor to prevent conflicts
+      - .:/var/www/html
+      - /var/www/html/vendor
+      - /var/www/html/node_modules
+      - ./data:/var/www/html/data
+      - symfony_var:/var/www/html/var
+    environment:
+      # Development environment settings
+      - APP_ENV=dev
+      - APP_DEBUG=1

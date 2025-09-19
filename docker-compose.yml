@@ -7,10 +7,10 @@ services:
     ports:
       - "${SERVER_PORT:-8100}:${SERVER_PORT:-8100}"
     volumes:
-      - .:/var/www/html
-      - /var/www/html/var/cache
-      - /var/www/html/var/log
-      - /var/www/html/node_modules
+      # Mount only data directory to persist database
+      - ./data:/var/www/html/data
+      # Mount var directory for logs and cache (but exclude var from main mount)
+      - symfony_var:/var/www/html/var
     environment:
       - APP_ENV=dev
       - APP_SECRET=${APP_SECRET:-your-secret-key-here}
@@ -45,4 +45,6 @@ networks:
 
 volumes:
   mysql_data:
+    driver: local
+  symfony_var:
     driver: local
