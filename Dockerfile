@@ -28,7 +28,7 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         opcache \
     && docker-php-ext-enable opcache
 
-# Install Composer (already present, just ensuring)
+# Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 # Set working directory
@@ -38,18 +38,25 @@ WORKDIR /var/www/html
 COPY composer.json composer.lock ./
 RUN composer install --no-interaction --no-scripts --optimize-autoloader --no-dev
 
-# Copy application files
+# Copy application files (excluding vendor due to .dockerignore)
 COPY . .
 
 # Copy entrypoint script
 COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Copy importmap configuration
-COPY importmap.php ./
+# Create directories and set proper permissions
+RUN mkdir -p var/cache var/log data \
+    && chown -R www-data:www-data . \
+    && chmod -R 755 . \
+    && chmod -R 775 var data
 
-# Set proper permissions
-RUN chown -R www-data:www-data /var/www/html/var /var/www/html/data
+# Run composer scripts to generate autoload_runtime.php
+RUN composer dump-autoload --optimize \
+    && composer run-script post-install-cmd || true
+
+# Install npm dependencies if they exist
+RUN if [ -f "package.json" ]; then npm ci; fi
 
 # Configure PHP
 RUN echo "memory_limit = 512M" > /usr/local/etc/php/conf.d/memory-limit.ini
@@ -71,4 +78,5 @@ COPY docker/supervisor.conf /etc/supervisor/conf.d/supervisor.conf
 # Expose port
 EXPOSE 8100
 
+# Supervisor needs root, but apps run as www-data (configured in supervisor.conf)
 # Start supervisor via docker-compose

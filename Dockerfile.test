@@ -30,32 +30,44 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
+# Create app user and group
+RUN groupadd --gid 1000 appuser \
+    && useradd --uid 1000 --gid appuser --shell /bin/bash --create-home appuser
+
 # Set working directory
 WORKDIR /var/www/html
 
 # Copy composer files and install all dependencies (including dev)
-COPY composer.json composer.lock ./
-RUN composer install --no-interaction --optimize-autoloader
+COPY --chown=appuser:appuser composer.json composer.lock ./
+RUN composer install --no-interaction --optimize-autoloader --no-scripts
 
-# Copy application files
-COPY . .
+# Copy application files (excluding vendor due to .dockerignore)
+COPY --chown=appuser:appuser . .
 
 # Create directories and set permissions
-RUN mkdir -p var/cache var/log var/test-data \
-    && chown -R www-data:www-data var \
-    && chmod -R 775 var
+RUN mkdir -p var/cache var/log var/test-data data \
+    && chown -R appuser:appuser . \
+    && chmod -R 755 . \
+    && chmod -R 775 var data
+
+# Run composer scripts to generate autoload_runtime.php and other assets
+RUN composer dump-autoload --optimize \
+    && composer run-script post-install-cmd || true
+
+# Install npm dependencies if they exist
+RUN if [ -f "package.json" ]; then npm ci; fi
 
 # Configure PHP for testing
 RUN echo "memory_limit = 512M" > /usr/local/etc/php/conf.d/memory-limit.ini \
     && echo "error_reporting = E_ALL" > /usr/local/etc/php/conf.d/error-reporting.ini \
     && echo "display_errors = On" >> /usr/local/etc/php/conf.d/error-reporting.ini
 
-# Install npm dependencies if they exist
-RUN if [ -f "package.json" ]; then npm ci; fi
-
 # Set up test environment
 ENV APP_ENV=test
 ENV DATABASE_URL=sqlite:///var/www/html/var/test.db
+
+# Switch to app user
+USER appuser
 
 # Default command
 CMD ["./bin/phpunit"]

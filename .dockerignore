@@ -1,0 +1,36 @@
+# Prevent local vendor from overwriting Docker-built vendor
+vendor/
+node_modules/
+
+# Cache and temporary files
+var/cache/
+var/log/
+var/tmp/
+
+# Test artifacts
+coverage/
+.phpunit.cache/
+.phpunit.result.cache
+
+# Development files
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker files (prevent recursion)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
