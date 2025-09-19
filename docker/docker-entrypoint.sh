@@ -40,17 +40,25 @@ else
 fi
 php bin/console doctrine:migrations:migrate --no-interaction || echo "Migrations failed, continuing..."
 
-# Load fixtures in development environment
+# Load fixtures in development environment only if database is empty
 if [ "$APP_ENV" == "dev" ]; then
-    php bin/console doctrine:fixtures:load --no-interaction --append
+    # Check if users table exists and has data
+    USER_COUNT=$(php bin/console dbal:run-sql "SELECT COUNT(*) FROM symfony_demo_user" 2>/dev/null | tail -1 || echo "0")
+    if [ "$USER_COUNT" = "0" ] || [ -z "$USER_COUNT" ]; then
+        echo "Loading fixtures for empty database..."
+        php bin/console doctrine:fixtures:load --no-interaction
+    else
+        echo "Database already has data, skipping fixtures..."
+    fi
 fi
 
 # Clear cache
 php bin/console cache:clear --no-warmup --no-interaction
 php bin/console cache:warmup --no-interaction
 
-# Set proper permissions
-chown -R www-data:www-data /var/www/html/var /var/www/html/data
+# Set proper permissions (ignore volume mount permission errors)
+chown -R www-data:www-data /var/www/html/var || echo "Cannot change var permissions, continuing..."
+chown -R www-data:www-data /var/www/html/data || echo "Cannot change data permissions, continuing..."
 
 # Execute the command
 exec "$@"
