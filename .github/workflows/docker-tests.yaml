@@ -8,62 +8,20 @@ on:
     workflow_dispatch:
 
 env:
-    fail-fast: false
+    REGISTRY: ghcr.io
+    IMAGE_NAME: ${{ github.repository }}/symfony-demo
 
 permissions:
     contents: read
+    packages: write
 
 jobs:
-    docker-test:
-        name: "Docker Tests (AMD64)"
+    build-multi-arch:
+        name: "Build Multi-Architecture Images"
         runs-on: ubuntu-latest
-        continue-on-error: false
-
-        steps:
-            - name: "Checkout code"
-              uses: actions/checkout@v5
-
-            - name: "Build test image"
-              run: |
-                docker build \
-                  --file Dockerfile.test \
-                  --tag symfony-demo-test:latest \
-                  .
-
-            - name: "Run PHPUnit tests"
-              run: |
-                docker run --rm \
-                  -v ${{ github.workspace }}:/var/www/html \
-                  -w /var/www/html \
-                  symfony-demo-test:latest \
-                  ./bin/phpunit --stop-on-failure --no-coverage
-              env:
-                APP_ENV: test
-                SYMFONY_DEPRECATIONS_HELPER: disabled
-                DAMA_DOCTRINE_TEST_BUNDLE_ENABLED: 1
-
-            - name: "Run PHPStan analysis"
-              run: |
-                docker run --rm \
-                  -v ${{ github.workspace }}:/var/www/html \
-                  -w /var/www/html \
-                  symfony-demo-test:latest \
-                  ./vendor/bin/phpstan analyse
-              env:
-                APP_ENV: test
-
-            - name: "Run PHP CS Fixer check"
-              run: |
-                docker run --rm \
-                  -v ${{ github.workspace }}:/var/www/html \
-                  -w /var/www/html \
-                  symfony-demo-test:latest \
-                  ./vendor/bin/php-cs-fixer fix --dry-run --diff
-
-    docker-test-arm64:
-        name: "Docker Tests (ARM64)"
-        runs-on: ubuntu-latest
-        continue-on-error: false
+        outputs:
+            image-digest: ${{ steps.build.outputs.digest }}
+            image-metadata: ${{ steps.build.outputs.metadata }}
 
         steps:
             - name: "Checkout code"
@@ -77,14 +35,121 @@ jobs:
               with:
                 platforms: arm64
 
-            - name: "Build test image for ARM64"
+            - name: "Extract metadata"
+              id: meta
+              uses: docker/metadata-action@v5
+              with:
+                images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+                tags: |
+                  type=ref,event=branch
+                  type=ref,event=pr
+                  type=sha,prefix={{branch}}-
+                  type=raw,value=latest,enable={{is_default_branch}}
+
+            - name: "Build and export multi-arch test image"
+              id: build
+              uses: docker/build-push-action@v5
+              with:
+                context: .
+                file: ./Dockerfile.test
+                platforms: linux/amd64,linux/arm64
+                push: false
+                load: false
+                outputs: type=oci,dest=/tmp/symfony-demo-test.tar
+                tags: symfony-demo-test:latest
+                cache-from: type=gha
+                cache-to: type=gha,mode=max
+
+            - name: "Upload image artifact"
+              uses: actions/upload-artifact@v4
+              with:
+                name: symfony-demo-test-image
+                path: /tmp/symfony-demo-test.tar
+                retention-days: 1
+
+    test-amd64:
+        name: "Test AMD64"
+        runs-on: ubuntu-latest
+        needs: build-multi-arch
+
+        steps:
+            - name: "Checkout code"
+              uses: actions/checkout@v5
+
+            - name: "Set up Docker Buildx"
+              uses: docker/setup-buildx-action@v3
+
+            - name: "Download image artifact"
+              uses: actions/download-artifact@v4
+              with:
+                name: symfony-demo-test-image
+                path: /tmp
+
+            - name: "Load image"
               run: |
-                docker buildx build \
-                  --platform linux/arm64 \
-                  --file Dockerfile.test \
-                  --tag symfony-demo-test:arm64 \
-                  --load \
-                  .
+                docker load < /tmp/symfony-demo-test.tar
+                docker tag symfony-demo-test:latest symfony-demo-test:amd64
+
+            - name: "Run PHPUnit tests (AMD64)"
+              run: |
+                docker run --rm \
+                  --platform linux/amd64 \
+                  -v ${{ github.workspace }}:/var/www/html \
+                  -w /var/www/html \
+                  symfony-demo-test:amd64 \
+                  ./bin/phpunit --stop-on-failure --no-coverage
+              env:
+                APP_ENV: test
+                SYMFONY_DEPRECATIONS_HELPER: disabled
+                DAMA_DOCTRINE_TEST_BUNDLE_ENABLED: 1
+
+            - name: "Run PHPStan analysis (AMD64)"
+              run: |
+                docker run --rm \
+                  --platform linux/amd64 \
+                  -v ${{ github.workspace }}:/var/www/html \
+                  -w /var/www/html \
+                  symfony-demo-test:amd64 \
+                  ./vendor/bin/phpstan analyse
+              env:
+                APP_ENV: test
+
+            - name: "Run PHP CS Fixer check (AMD64)"
+              run: |
+                docker run --rm \
+                  --platform linux/amd64 \
+                  -v ${{ github.workspace }}:/var/www/html \
+                  -w /var/www/html \
+                  symfony-demo-test:amd64 \
+                  ./vendor/bin/php-cs-fixer fix --dry-run --diff
+
+    test-arm64:
+        name: "Test ARM64"
+        runs-on: ubuntu-latest
+        needs: build-multi-arch
+
+        steps:
+            - name: "Checkout code"
+              uses: actions/checkout@v5
+
+            - name: "Set up Docker Buildx"
+              uses: docker/setup-buildx-action@v3
+
+            - name: "Set up QEMU"
+              uses: docker/setup-qemu-action@v3
+              with:
+                platforms: arm64
+
+            - name: "Download image artifact"
+              uses: actions/download-artifact@v4
+              with:
+                name: symfony-demo-test-image
+                path: /tmp
+
+            - name: "Load image"
+              run: |
+                docker load < /tmp/symfony-demo-test.tar
+                docker tag symfony-demo-test:latest symfony-demo-test:arm64
 
             - name: "Run PHPUnit tests (ARM64)"
               run: |
@@ -106,6 +171,9 @@ jobs:
         steps:
             - name: "Checkout code"
               uses: actions/checkout@v5
+
+            - name: "Set up Docker Buildx"
+              uses: docker/setup-buildx-action@v3
 
             - name: "Build services with Docker Compose"
               run: |
@@ -130,3 +198,53 @@ jobs:
             - name: "Cleanup"
               run: |
                 docker compose -f docker-compose.test.yml down -v
+
+    docker-bake-test:
+        name: "Docker Bake Multi-Arch Test"
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: "Checkout code"
+              uses: actions/checkout@v5
+
+            - name: "Set up Docker Buildx"
+              uses: docker/setup-buildx-action@v3
+
+            - name: "Set up QEMU"
+              uses: docker/setup-qemu-action@v3
+              with:
+                platforms: arm64
+
+            - name: "Build multi-arch images with Docker Bake"
+              uses: docker/bake-action@v4
+              with:
+                files: docker-bake.hcl
+                targets: symfony-demo-test
+                set: |
+                  symfony-demo-test.cache-from=type=gha
+                  symfony-demo-test.cache-to=type=gha,mode=max
+
+            - name: "Test with multi-arch images"
+              run: |
+                # Test AMD64
+                docker run --rm --platform linux/amd64 \
+                  -v ${{ github.workspace }}:/var/www/html \
+                  -w /var/www/html \
+                  symfony-demo-test:latest \
+                  ./bin/phpunit --stop-on-failure --no-coverage
+
+                # Test ARM64 (if available)
+                if docker manifest inspect symfony-demo-test:latest | grep -q "arm64"; then
+                  echo "Testing ARM64 architecture..."
+                  docker run --rm --platform linux/arm64 \
+                    -v ${{ github.workspace }}:/var/www/html \
+                    -w /var/www/html \
+                    symfony-demo-test:latest \
+                    ./bin/phpunit --stop-on-failure --no-coverage
+                else
+                  echo "ARM64 image not available, skipping ARM64 tests"
+                fi
+              env:
+                APP_ENV: test
+                SYMFONY_DEPRECATIONS_HELPER: disabled
+                DAMA_DOCTRINE_TEST_BUNDLE_ENABLED: 1
