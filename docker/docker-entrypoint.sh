@@ -2,6 +2,12 @@
 
 set -e
 
+# Install Composer dependencies if vendor directory doesn't exist
+if [ ! -d "vendor" ]; then
+    echo "Installing Composer dependencies..."
+    composer install --no-interaction --optimize-autoloader
+fi
+
 # Wait for database if using MySQL/PostgreSQL
 # if [ "$DATABASE_URL" != "sqlite:///%kernel.project_dir%/data/database.sqlite" ]; then
 #     echo "Waiting for database to be ready..."
