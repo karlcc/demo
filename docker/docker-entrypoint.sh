@@ -28,6 +28,14 @@ fi
 # Build assets
 php bin/console assets:install public --no-interaction
 php bin/console importmap:install --no-interaction
+
+# Remove broken dart-sass and set up symlink to global sass
+rm -rf /var/www/html/var/dart-sass || true
+mkdir -p /var/www/html/var/dart-sass
+echo '#!/bin/bash' > /var/www/html/var/dart-sass/sass
+echo 'exec sass "$@"' >> /var/www/html/var/dart-sass/sass
+chmod +x /var/www/html/var/dart-sass/sass
+
 php bin/console sass:build --no-interaction || echo "sass:build not available, skipping..."
 
 # Run database migrations (skip database creation for SQLite)

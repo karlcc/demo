@@ -15,7 +15,13 @@ RUN apt-get update && apt-get install -y \
     nodejs \
     npm \
     supervisor \
+    wget \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Dart Sass via npm (more reliable across architectures)
+RUN npm install -g sass && \
+    echo "Sass installed via npm:" && \
+    sass --version
 
 # Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
