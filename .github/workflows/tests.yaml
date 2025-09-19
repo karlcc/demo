@@ -35,24 +35,13 @@ jobs:
 
             - name: "Install PHP with extensions (macOS)"
               if: matrix.operating-system == 'macos-latest'
-              run: |
-                # Use Homebrew for more stable PHP installation on macOS
-                brew update
-                brew install php@8.2 composer
-                brew link --force php@8.2
-
-                # Configure PHP with conservative settings
-                echo "memory_limit = 1024M" >> $(brew --prefix)/etc/php/8.2/php.ini
-                echo "opcache.enable = 0" >> $(brew --prefix)/etc/php/8.2/php.ini
-                echo "opcache.enable_cli = 0" >> $(brew --prefix)/etc/php/8.2/php.ini
-                echo "max_execution_time = 0" >> $(brew --prefix)/etc/php/8.2/php.ini
-                echo "zend.assertions = 0" >> $(brew --prefix)/etc/php/8.2/php.ini
-                echo "realpath_cache_size = 0" >> $(brew --prefix)/etc/php/8.2/php.ini
-                echo "realpath_cache_ttl = 0" >> $(brew --prefix)/etc/php/8.2/php.ini
-
-                # Verify installation
-                php --version
-                composer --version
+              uses: shivammathur/setup-php@v2
+              with:
+                  coverage: "none"
+                  extensions: "intl, mbstring, pdo_sqlite, zip"
+                  php-version: ${{ matrix.php-version }}
+                  tools: composer:v2
+                  ini-values: memory_limit=1024M, opcache.enable=0, opcache.enable_cli=0, max_execution_time=0, zend.assertions=0, realpath_cache_size=0, realpath_cache_ttl=0, auto_globals_jit=0
 
             - name: "Install PHP with extensions (other platforms)"
               if: matrix.operating-system != 'macos-latest'
