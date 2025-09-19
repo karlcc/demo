@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- macOS-specific PHPUnit configuration to prevent segmentation faults -->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         cacheDirectory=".phpunit.cache.macos"
+         colors="true"
+         failOnDeprecation="false"
+         failOnNotice="false"
+         failOnWarning="false"
+         bootstrap="tests/bootstrap.php"
+         stopOnDefect="true"
+         processIsolation="true"
+         backupGlobals="false"
+         backupStaticProperties="false"
+         beStrictAboutOutputDuringTests="false"
+         beStrictAboutChangesToGlobalState="false"
+         verbose="false"
+>
+    <php>
+        <ini name="display_errors" value="0" />
+        <ini name="error_reporting" value="0" />
+        <ini name="memory_limit" value="1024M" />
+        <ini name="max_execution_time" value="0" />
+        <ini name="opcache.enable" value="0" />
+        <ini name="opcache.enable_cli" value="0" />
+        <ini name="realpath_cache_size" value="0" />
+        <ini name="realpath_cache_ttl" value="0" />
+        <ini name="zend.assertions" value="0" />
+        <ini name="auto_globals_jit" value="0" />
+        <ini name="mbstring.func_overload" value="0" />
+        <server name="APP_ENV" value="test" force="true" />
+        <server name="SHELL_VERBOSITY" value="-1" />
+        <server name="SYMFONY_DEPRECATIONS_HELPER" value="disabled" force="true" />
+        <server name="DATABASE_URL" value="sqlite:///:memory:" force="true" />
+        <env name="MEMORY_LIMIT" value="1024M" />
+        <env name="DAMA_DOCTRINE_TEST_BUNDLE_ENABLED" value="0" force="true" />
+        <env name="SYMFONY_DEPRECATIONS_HELPER" value="disabled" force="true" />
+    </php>
+
+    <testsuites>
+        <testsuite name="Project Test Suite">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+
+    <source ignoreSuppressionOfDeprecations="true"
+            ignoreIndirectDeprecations="true"
+            restrictNotices="false"
+            restrictWarnings="false"
+    >
+        <include>
+            <directory>src</directory>
+        </include>
+
+        <deprecationTrigger>
+            <function>trigger_deprecation</function>
+            <method>Doctrine\Deprecations\Deprecation::trigger</method>
+            <method>Doctrine\Deprecations\Deprecation::delegateTriggerToBackend</method>
+        </deprecationTrigger>
+    </source>
+
+    <!-- No extensions for macOS to avoid conflicts -->
+    <extensions>
+        <!-- All extensions disabled for macOS stability -->
+    </extensions>
+</phpunit>

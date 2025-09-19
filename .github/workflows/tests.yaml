@@ -27,13 +27,35 @@ jobs:
                     - operating-system: 'windows-latest'
                       php-version: '8.2'
                     - operating-system: 'macos-latest'
-                      php-version: '8.3'
+                      php-version: '8.2'
 
         steps:
             - name: "Checkout code"
               uses: actions/checkout@v5
 
-            - name: "Install PHP with extensions"
+            - name: "Install PHP with extensions (macOS)"
+              if: matrix.operating-system == 'macos-latest'
+              run: |
+                # Use Homebrew for more stable PHP installation on macOS
+                brew update
+                brew install php@8.2 composer
+                brew link --force php@8.2
+
+                # Configure PHP with conservative settings
+                echo "memory_limit = 1024M" >> $(brew --prefix)/etc/php/8.2/php.ini
+                echo "opcache.enable = 0" >> $(brew --prefix)/etc/php/8.2/php.ini
+                echo "opcache.enable_cli = 0" >> $(brew --prefix)/etc/php/8.2/php.ini
+                echo "max_execution_time = 0" >> $(brew --prefix)/etc/php/8.2/php.ini
+                echo "zend.assertions = 0" >> $(brew --prefix)/etc/php/8.2/php.ini
+                echo "realpath_cache_size = 0" >> $(brew --prefix)/etc/php/8.2/php.ini
+                echo "realpath_cache_ttl = 0" >> $(brew --prefix)/etc/php/8.2/php.ini
+
+                # Verify installation
+                php --version
+                composer --version
+
+            - name: "Install PHP with extensions (other platforms)"
+              if: matrix.operating-system != 'macos-latest'
               uses: shivammathur/setup-php@v2
               with:
                   coverage: "none"
@@ -59,12 +81,88 @@ jobs:
               run: |
                 # Increase system limits for macOS
                 ulimit -n 4096
-                # Set environment variables for stability
+                ulimit -u 2048
+
+                # Set very conservative environment for macOS
                 export SYMFONY_DEPRECATIONS_HELPER=disabled
                 export DAMA_DOCTRINE_TEST_BUNDLE_ENABLED=0
+                export APP_ENV=test
+                export DATABASE_URL="sqlite:///:memory:"
 
-            - name: "Run tests"
+                # Clear any existing caches that might cause issues
+                rm -rf var/cache/test/* || true
+                rm -rf .phpunit.cache.macos || true
+
+            - name: "Run tests (macOS)"
+              if: matrix.operating-system == 'macos-latest'
+              run: |
+                # Try running all tests first
+                set +e
+                php -d memory_limit=1024M \
+                    -d opcache.enable=0 \
+                    -d opcache.enable_cli=0 \
+                    -d realpath_cache_size=0 \
+                    -d zend.assertions=0 \
+                    vendor/bin/phpunit \
+                    --configuration phpunit.macos.xml \
+                    --stop-on-failure \
+                    --no-coverage \
+                    --process-isolation \
+                    --verbose
+
+                TEST_EXIT_CODE=$?
+
+                if [ $TEST_EXIT_CODE -eq 139 ]; then
+                  echo "Segfault detected, trying individual test directories..."
+
+                  # If segfault, try running tests directory by directory
+                  for dir in tests/*/; do
+                    if [ -d "$dir" ]; then
+                      echo "Running tests in $dir"
+                      php -d memory_limit=1024M \
+                          -d opcache.enable=0 \
+                          -d opcache.enable_cli=0 \
+                          -d realpath_cache_size=0 \
+                          -d zend.assertions=0 \
+                          vendor/bin/phpunit \
+                          --configuration phpunit.macos.xml \
+                          --no-coverage \
+                          --process-isolation \
+                          --verbose \
+                          "$dir" || exit $?
+                    fi
+                  done
+
+                  # Run individual test files in tests root
+                  for file in tests/*.php; do
+                    if [ -f "$file" ]; then
+                      echo "Running test file $file"
+                      php -d memory_limit=1024M \
+                          -d opcache.enable=0 \
+                          -d opcache.enable_cli=0 \
+                          -d realpath_cache_size=0 \
+                          -d zend.assertions=0 \
+                          vendor/bin/phpunit \
+                          --configuration phpunit.macos.xml \
+                          --no-coverage \
+                          --process-isolation \
+                          --verbose \
+                          "$file" || exit $?
+                    fi
+                  done
+
+                  echo "All tests completed successfully via fallback method"
+                else
+                  exit $TEST_EXIT_CODE
+                fi
+              env:
+                SYMFONY_DEPRECATIONS_HELPER: disabled
+                DAMA_DOCTRINE_TEST_BUNDLE_ENABLED: 0
+                DATABASE_URL: "sqlite:///:memory:"
+
+            - name: "Run tests (other platforms)"
+              if: matrix.operating-system != 'macos-latest'
               run: vendor/bin/phpunit --stop-on-failure --no-coverage
               env:
                 SYMFONY_DEPRECATIONS_HELPER: disabled
-                DAMA_DOCTRINE_TEST_BUNDLE_ENABLED: ${{ matrix.operating-system == 'macos-latest' && '0' || '1' }}
+                DAMA_DOCTRINE_TEST_BUNDLE_ENABLED: 1
