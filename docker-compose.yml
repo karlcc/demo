@@ -5,9 +5,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      platforms:
-        - linux/amd64
-        - linux/arm64
     container_name: symfony-demo-app
     ports:
       - "${SERVER_PORT:-8100}:${SERVER_PORT:-8100}"

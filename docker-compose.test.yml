@@ -5,9 +5,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.test
-      platforms:
-        - linux/amd64
-        - linux/arm64
     container_name: symfony-demo-test
     environment:
       - APP_ENV=test
@@ -28,9 +25,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.test
-      platforms:
-        - linux/amd64
-        - linux/arm64
     container_name: symfony-demo-phpstan
     environment:
       - APP_ENV=test
@@ -46,9 +40,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.test
-      platforms:
-        - linux/amd64
-        - linux/arm64
     container_name: symfony-demo-cs-fixer
     volumes:
       - .:/var/www/html
