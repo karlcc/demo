@@ -1,0 +1,119 @@
+name: "Docker Multi-Architecture Tests"
+
+on:
+    pull_request:
+    push:
+        branches:
+            - main
+    workflow_dispatch:
+
+env:
+    fail-fast: false
+
+permissions:
+    contents: read
+
+jobs:
+    docker-test:
+        name: "Docker Tests (${{ matrix.platform }})"
+        runs-on: ${{ matrix.runner }}
+        continue-on-error: false
+
+        strategy:
+            matrix:
+                include:
+                    - platform: linux/amd64
+                      runner: ubuntu-latest
+                    - platform: linux/arm64
+                      runner: ubuntu-latest
+
+        steps:
+            - name: "Checkout code"
+              uses: actions/checkout@v5
+
+            - name: "Set up Docker Buildx"
+              uses: docker/setup-buildx-action@v3
+
+            - name: "Set up QEMU"
+              uses: docker/setup-qemu-action@v3
+              with:
+                platforms: arm64
+
+            - name: "Build test image"
+              run: |
+                docker buildx build \
+                  --platform ${{ matrix.platform }} \
+                  --file Dockerfile.test \
+                  --tag symfony-demo-test:${{ matrix.platform }} \
+                  --load \
+                  .
+
+            - name: "Run PHPUnit tests"
+              run: |
+                docker run --rm \
+                  --platform ${{ matrix.platform }} \
+                  -v ${{ github.workspace }}:/var/www/html \
+                  symfony-demo-test:${{ matrix.platform }} \
+                  ./bin/phpunit --stop-on-failure --no-coverage
+              env:
+                APP_ENV: test
+                SYMFONY_DEPRECATIONS_HELPER: disabled
+                DAMA_DOCTRINE_TEST_BUNDLE_ENABLED: 1
+
+            - name: "Run PHPStan analysis"
+              run: |
+                docker run --rm \
+                  --platform ${{ matrix.platform }} \
+                  -v ${{ github.workspace }}:/var/www/html \
+                  symfony-demo-test:${{ matrix.platform }} \
+                  ./vendor/bin/phpstan analyse
+              env:
+                APP_ENV: test
+
+            - name: "Run PHP CS Fixer check"
+              run: |
+                docker run --rm \
+                  --platform ${{ matrix.platform }} \
+                  -v ${{ github.workspace }}:/var/www/html \
+                  symfony-demo-test:${{ matrix.platform }} \
+                  ./vendor/bin/php-cs-fixer fix --dry-run --diff
+
+    docker-compose-test:
+        name: "Docker Compose Test"
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: "Checkout code"
+              uses: actions/checkout@v5
+
+            - name: "Set up Docker Buildx"
+              uses: docker/setup-buildx-action@v3
+
+            - name: "Set up QEMU"
+              uses: docker/setup-qemu-action@v3
+              with:
+                platforms: arm64
+
+            - name: "Test Docker Compose build (amd64)"
+              run: |
+                docker-compose -f docker-compose.test.yml build --build-arg BUILDPLATFORM=linux/amd64 symfony-test
+
+            - name: "Run tests via Docker Compose"
+              run: |
+                docker-compose -f docker-compose.test.yml run --rm symfony-test
+              env:
+                APP_ENV: test
+                SYMFONY_DEPRECATIONS_HELPER: disabled
+                DAMA_DOCTRINE_TEST_BUNDLE_ENABLED: 1
+
+            - name: "Run PHPStan via Docker Compose"
+              run: |
+                docker-compose -f docker-compose.test.yml run --rm symfony-phpstan
+
+            - name: "Run PHP CS Fixer via Docker Compose"
+              run: |
+                docker-compose -f docker-compose.test.yml run --rm symfony-cs-fixer
+
+            - name: "Cleanup"
+              run: |
+                docker-compose -f docker-compose.test.yml down -v

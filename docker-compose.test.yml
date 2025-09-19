@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  symfony-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    container_name: symfony-demo-test
+    environment:
+      - APP_ENV=test
+      - APP_SECRET=test-secret-key
+      - DATABASE_URL=sqlite:///var/www/html/var/test.db
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/var/cache
+      - /var/www/html/var/log
+      - /var/www/html/node_modules
+    working_dir: /var/www/html
+    command: ["./bin/phpunit"]
+    networks:
+      - test-network
+
+  # Service for running static analysis
+  symfony-phpstan:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    container_name: symfony-demo-phpstan
+    environment:
+      - APP_ENV=test
+    volumes:
+      - .:/var/www/html
+    working_dir: /var/www/html
+    command: ["./vendor/bin/phpstan", "analyse"]
+    networks:
+      - test-network
+
+  # Service for code style fixing
+  symfony-cs-fixer:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+      platforms:
+        - linux/amd64
+        - linux/arm64
+    container_name: symfony-demo-cs-fixer
+    volumes:
+      - .:/var/www/html
+    working_dir: /var/www/html
+    command: ["./vendor/bin/php-cs-fixer", "fix", "--dry-run"]
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge

@@ -1,0 +1,61 @@
+FROM php:8.4-cli
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    unzip \
+    libicu-dev \
+    libzip-dev \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libsqlite3-dev \
+    libonig-dev \
+    nodejs \
+    npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        pdo \
+        pdo_sqlite \
+        zip \
+        intl \
+        gd \
+        opcache \
+    && docker-php-ext-enable opcache
+
+# Install Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Set working directory
+WORKDIR /var/www/html
+
+# Copy composer files and install all dependencies (including dev)
+COPY composer.json composer.lock ./
+RUN composer install --no-interaction --optimize-autoloader
+
+# Copy application files
+COPY . .
+
+# Create directories and set permissions
+RUN mkdir -p var/cache var/log var/test-data \
+    && chown -R www-data:www-data var \
+    && chmod -R 775 var
+
+# Configure PHP for testing
+RUN echo "memory_limit = 512M" > /usr/local/etc/php/conf.d/memory-limit.ini \
+    && echo "error_reporting = E_ALL" > /usr/local/etc/php/conf.d/error-reporting.ini \
+    && echo "display_errors = On" >> /usr/local/etc/php/conf.d/error-reporting.ini
+
+# Install npm dependencies if they exist
+RUN if [ -f "package.json" ]; then npm ci; fi
+
+# Set up test environment
+ENV APP_ENV=test
+ENV DATABASE_URL=sqlite:///var/www/html/var/test.db
+
+# Default command
+CMD ["./bin/phpunit"]

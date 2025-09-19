@@ -12,6 +12,7 @@
 namespace App\Tests\Command;
 
 use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
@@ -31,6 +32,24 @@ final class AddUserCommandTest extends AbstractCommandTestCase
     {
         if ('Windows' === \PHP_OS_FAMILY) {
             $this->markTestSkipped('`stty` is required to test this command.');
+        }
+
+        // Clean up any existing user with the test username to ensure test isolation
+        self::bootKernel();
+        $container = self::getContainer();
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $userRepository = $container->get(UserRepository::class);
+
+        $existingUser = $userRepository->findOneBy(['username' => $this->userData['username']]);
+        if ($existingUser) {
+            $entityManager->remove($existingUser);
+            $entityManager->flush();
+        }
+
+        $existingUserByEmail = $userRepository->findOneBy(['email' => $this->userData['email']]);
+        if ($existingUserByEmail) {
+            $entityManager->remove($existingUserByEmail);
+            $entityManager->flush();
         }
     }
 

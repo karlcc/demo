@@ -1,20 +1,21 @@
-FROM php:8.4-fpm-alpine
+FROM php:8.4-fpm
 
 # Install system dependencies
-RUN apk add --no-cache \
+RUN apt-get update && apt-get install -y \
     git \
     curl \
     unzip \
-    icu-dev \
+    libicu-dev \
     libzip-dev \
     libpng-dev \
-    jpeg-dev \
-    freetype-dev \
-    sqlite-dev \
-    oniguruma-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libsqlite3-dev \
+    libonig-dev \
     nodejs \
     npm \
-    supervisor
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
