@@ -57,10 +57,14 @@ RUN composer dump-autoload --optimize \
     && composer run-script post-install-cmd || true
 
 # Install frontend assets (run after all files are copied and permissions set)
+# Set proper environment variables for asset installation
 RUN echo "Installing frontend assets..." \
-    && php bin/console cache:clear --no-interaction || echo "Cache clear failed, continuing..." \
-    && php bin/console importmap:install --no-interaction -v || echo "importmap:install failed, continuing..." \
-    && php bin/console assets:install public --no-interaction -v || echo "assets:install failed, continuing..." \
+    && export APP_ENV=dev \
+    && export APP_DEBUG=1 \
+    && php bin/console cache:clear --no-interaction --env=dev || echo "Cache clear failed, continuing..." \
+    && php bin/console importmap:install --no-interaction --env=dev -v || echo "importmap:install failed, continuing..." \
+    && php bin/console assets:install public --no-interaction --env=dev -v || echo "assets:install failed, continuing..." \
+    && ls -la assets/vendor/ || echo "No assets/vendor directory" \
     && echo "Frontend assets installation completed"
 
 # Install npm dependencies if they exist
