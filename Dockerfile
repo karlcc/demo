@@ -36,7 +36,8 @@ WORKDIR /var/www/html
 
 # Copy composer files and install dependencies
 COPY composer.json composer.lock ./
-RUN composer install --no-interaction --no-scripts --optimize-autoloader --no-dev
+# Install with dev dependencies since docker-compose sets APP_ENV=dev
+RUN composer install --no-interaction --no-scripts --optimize-autoloader
 
 # Copy application files (excluding vendor due to .dockerignore)
 COPY . .
