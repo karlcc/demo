@@ -28,58 +28,43 @@ jobs:
                       php-version: '8.2'
                     - operating-system: 'macos-latest'
                       php-version: '8.3'
-                      use-docker: true
 
         steps:
             - name: "Checkout code"
               uses: actions/checkout@v5
 
-            - name: "Set up Docker for macOS"
-              if: matrix.use-docker == true
-              uses: docker/setup-buildx-action@v3
-
             - name: "Install PHP with extensions"
-              if: matrix.use-docker != true
               uses: shivammathur/setup-php@v2
               with:
                   coverage: "none"
                   extensions: "intl, mbstring, pdo_sqlite, zip"
                   php-version: ${{ matrix.php-version }}
                   tools: composer:v2
+                  ini-values: memory_limit=768M, opcache.enable=0, opcache.enable_cli=0, max_execution_time=0, zend.assertions=0
 
             - name: "Add PHPUnit matcher"
-              if: matrix.use-docker != true
               run: echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
 
             - name: "Install dependencies"
-              if: matrix.use-docker != true
               run: composer install --ansi --no-interaction --no-progress
 
             - name: "Build and compile assets"
-              if: matrix.use-docker != true
               run: |
                 php bin/console importmap:install
                 php bin/console sass:build
                 php bin/console asset-map:compile
 
-            - name: "Build test environment for macOS"
-              if: matrix.use-docker == true
+            - name: "Configure macOS test environment"
+              if: matrix.operating-system == 'macos-latest'
               run: |
-                # Build the test Docker image
-                docker compose -f docker-compose.test.yml build --no-cache
+                # Increase system limits for macOS
+                ulimit -n 4096
+                # Set environment variables for stability
+                export SYMFONY_DEPRECATIONS_HELPER=disabled
+                export DAMA_DOCTRINE_TEST_BUNDLE_ENABLED=0
 
-            - name: "Run tests (macOS Docker)"
-              if: matrix.use-docker == true
-              run: |
-                # Run tests in Docker container
-                docker compose -f docker-compose.test.yml up --abort-on-container-exit --exit-code-from symfony-test
-
-            - name: "Clean up Docker resources"
-              if: matrix.use-docker == true && always()
-              run: |
-                # Clean up Docker containers and volumes
-                docker compose -f docker-compose.test.yml down -v --remove-orphans
-
-            - name: "Run tests (other platforms)"
-              if: matrix.use-docker != true
-              run: vendor/bin/phpunit
+            - name: "Run tests"
+              run: vendor/bin/phpunit --stop-on-failure --no-coverage
+              env:
+                SYMFONY_DEPRECATIONS_HELPER: disabled
+                DAMA_DOCTRINE_TEST_BUNDLE_ENABLED: ${{ matrix.operating-system == 'macos-latest' && '0' || '1' }}
