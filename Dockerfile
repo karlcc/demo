@@ -56,6 +56,10 @@ RUN mkdir -p var/cache var/log data \
 RUN composer dump-autoload --optimize \
     && composer run-script post-install-cmd || true
 
+# Install frontend assets after copying application files
+RUN php bin/console importmap:install \
+    && php bin/console assets:install public || true
+
 # Install npm dependencies if they exist
 RUN if [ -f "package.json" ]; then npm ci; fi
 
