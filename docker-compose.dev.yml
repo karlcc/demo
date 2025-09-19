@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  symfony-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: symfony-dev
+    ports:
+      - "${SERVER_PORT:-8100}:${SERVER_PORT:-8100}"
+    volumes:
+      - .:/workspaces:cached
+      - symfony_vendor:/workspaces/vendor
+      - symfony_var:/workspaces/var
+    environment:
+      - APP_ENV=dev
+      - APP_DEBUG=1
+      - APP_SECRET=${APP_SECRET:-your-secret-key-here}
+      - SERVER_PORT=${SERVER_PORT:-8100}
+      - DATABASE_URL=sqlite:///workspaces/data/database.sqlite
+      - SYMFONY_TRUSTED_PROXIES=127.0.0.1
+      - SYMFONY_TRUSTED_HEADERS=x-forwarded-for,x-forwarded-host,x-forwarded-proto,x-forwarded-port
+    working_dir: /workspaces
+    command: >
+      bash -c "
+        echo '=== Starting Symfony Development Environment ===' &&
+        sudo chown -R vscode:vscode /workspaces/vendor /workspaces/var &&
+        echo '=== Permissions fixed ===' &&
+        composer install --ignore-platform-req=php &&
+        echo '=== Dependencies installed ===' &&
+        symfony server:start --port=8100 --allow-all-ip --no-tls --daemon &&
+        echo '=== Symfony server started on port 8100 ===' &&
+        symfony console sass:build --watch &
+        echo '=== Sass watcher started ===' &&
+        echo '=== Environment ready! Server: http://localhost:8100 ===' &&
+        tail -f /var/log/*.log /dev/null
+      "
+    stdin_open: true
+    tty: true
+  # Optional: Add a database service if you want to use MySQL/PostgreSQL instead of SQLite
+  #   network_mode: service:db
+  # db:
+  #   image: mysql:8.0
+  #   container_name: symfony-mysql
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: root
+  #     MYSQL_DATABASE: symfony_demo
+  #     MYSQL_USER: app
+  #     MYSQL_PASSWORD: app
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+
+volumes:
+  symfony_vendor:
+    driver: local
+  symfony_var:
+    driver: local
+  mysql_data:
+    driver: local

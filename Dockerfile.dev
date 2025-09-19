@@ -1,0 +1,25 @@
+FROM mcr.microsoft.com/devcontainers/base:ubuntu
+
+ENV VERSION=8.4
+ENV INSTALLCOMPOSER=true
+ENV EXTENSIONSEXTRA="amqp,apcu,ast,dba,enchant,imagick,imap,ldap,memcache,memcached,mongodb,msgpack,odbc,pspell,redis,shmop,tidy,xdebug,yaml,ds"
+ENV DISABLEALLEXTENSIONS=false
+
+RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
+    && apt-get -y install --no-install-recommends curl wget ca-certificates gnupg lsb-release \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN curl -sSL https://raw.githubusercontent.com/shyim/devcontainers-features/refs/heads/main/src/php/install.sh | bash
+
+RUN curl -sS https://get.symfony.com/cli/installer | bash -s -- --install-dir=/usr/bin
+
+RUN git config --system --add safe.directory '*'
+
+RUN mkdir -p /workspaces && chown -R vscode:vscode /workspaces
+
+USER vscode
+
+WORKDIR /workspaces
+
+EXPOSE 8100
+
