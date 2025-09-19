@@ -57,8 +57,11 @@ RUN composer dump-autoload --optimize \
     && composer run-script post-install-cmd || true
 
 # Install frontend assets (run after all files are copied and permissions set)
-RUN php bin/console importmap:install --no-interaction || echo "importmap:install failed, continuing..." \
-    && php bin/console assets:install public --no-interaction || echo "assets:install failed, continuing..."
+RUN echo "Installing frontend assets..." \
+    && php bin/console cache:clear --no-interaction || echo "Cache clear failed, continuing..." \
+    && php bin/console importmap:install --no-interaction -v || echo "importmap:install failed, continuing..." \
+    && php bin/console assets:install public --no-interaction -v || echo "assets:install failed, continuing..." \
+    && echo "Frontend assets installation completed"
 
 # Install npm dependencies if they exist
 RUN if [ -f "package.json" ]; then npm ci; fi
