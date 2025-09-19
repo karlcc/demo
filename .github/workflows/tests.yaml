@@ -68,10 +68,6 @@ jobs:
             - name: "Configure macOS test environment"
               if: matrix.operating-system == 'macos-latest'
               run: |
-                # Increase system limits for macOS
-                ulimit -n 4096
-                ulimit -u 2048
-
                 # Set very conservative environment for macOS
                 export SYMFONY_DEPRECATIONS_HELPER=disabled
                 export DAMA_DOCTRINE_TEST_BUNDLE_ENABLED=0
