@@ -161,7 +161,7 @@ jobs:
                 platforms: arm64
 
             - name: "Build multi-arch images with Docker Bake"
-              uses: docker/bake-action@v4
+              uses: docker/bake-action@v5
               with:
                 files: docker-bake.hcl
                 targets: symfony-demo-test
