@@ -30,9 +30,15 @@ php bin/console assets:install public --no-interaction
 php bin/console importmap:install --no-interaction
 php bin/console sass:build --no-interaction || echo "sass:build not available, skipping..."
 
-# Run database migrations
-php bin/console doctrine:database:create --if-not-exists
-php bin/console doctrine:migrations:migrate --no-interaction
+# Run database migrations (skip database creation for SQLite)
+echo "Database URL: $DATABASE_URL"
+if [[ "$DATABASE_URL" != sqlite:* ]]; then
+    echo "Creating database for non-SQLite..."
+    php bin/console doctrine:database:create --if-not-exists || echo "Database creation failed, continuing..."
+else
+    echo "Skipping database creation for SQLite..."
+fi
+php bin/console doctrine:migrations:migrate --no-interaction || echo "Migrations failed, continuing..."
 
 # Load fixtures in development environment
 if [ "$APP_ENV" == "dev" ]; then
