@@ -18,7 +18,8 @@ services:
       - DATABASE_URL=sqlite:///var/www/html/data/database.sqlite
       - SYMFONY_TRUSTED_PROXIES=127.0.0.1,localhost
       - SYMFONY_TRUSTED_HEADERS=x-forwarded-for,x-forwarded-host,x-forwarded-proto,x-forwarded-port
-    command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisor.conf"]
+    # Remove command to use ENTRYPOINT from Dockerfile which runs asset setup
+    # command: ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisor.conf"]
     networks:
       - symfony-network
     restart: unless-stopped

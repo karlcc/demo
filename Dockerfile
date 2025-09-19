@@ -90,5 +90,8 @@ COPY docker/supervisor.conf /etc/supervisor/conf.d/supervisor.conf
 # Expose port
 EXPOSE 8100
 
-# Supervisor needs root, but apps run as www-data (configured in supervisor.conf)
-# Start supervisor via docker-compose
+# Set the entrypoint to run our setup script
+ENTRYPOINT ["/docker-entrypoint.sh"]
+
+# Default command (can be overridden by docker-compose)
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisor.conf"]
